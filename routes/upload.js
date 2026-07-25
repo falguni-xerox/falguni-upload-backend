@@ -518,6 +518,24 @@ res.json({
 
 
     }
+    catch(err){
+
+
+        console.error(err);
+
+
+        res.status(500)
+        .json({
+
+            success:false,
+
+            message:
+                "Upload failed."
+
+        });
+
+
+    }
 
 
 

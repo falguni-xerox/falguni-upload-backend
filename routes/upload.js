@@ -7,19 +7,80 @@ const multer = require("multer");
 const archiver = require("archiver");
 
 const UPLOAD_DIR = path.join(__dirname, "..", "uploads", "temp");
+const META_FILE = path.join(UPLOAD_DIR, "files.json");
 
-// Create upload folder if missing
+// ------------------------------------
+// Create Upload Folder
+// ------------------------------------
 if (!fs.existsSync(UPLOAD_DIR)) {
     fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 }
 
-// -----------------------------
+// ------------------------------------
+// Metadata Helpers
+// ------------------------------------
+function loadMetadata() {
+
+    try {
+
+        if (!fs.existsSync(META_FILE)) {
+            fs.writeFileSync(META_FILE, "[]");
+        }
+
+        return JSON.parse(fs.readFileSync(META_FILE, "utf8"));
+
+    } catch (err) {
+
+        console.error("Metadata Read Error:", err);
+        return [];
+
+    }
+
+}
+
+function saveMetadata(data) {
+
+    try {
+
+        fs.writeFileSync(
+            META_FILE,
+            JSON.stringify(data, null, 2)
+        );
+
+    } catch (err) {
+
+        console.error("Metadata Save Error:", err);
+
+    }
+
+}
+
+// ------------------------------------
+// Safe Path
+// ------------------------------------
+function getSafeFilePath(fileName) {
+
+    const safeName = path.basename(fileName);
+
+    const fullPath = path.join(UPLOAD_DIR, safeName);
+
+    if (!fullPath.startsWith(UPLOAD_DIR)) {
+        return null;
+    }
+
+    return fullPath;
+
+}
+
+// ------------------------------------
 // Multer Storage
-// -----------------------------
+// ------------------------------------
 const storage = multer.diskStorage({
 
     destination(req, file, cb) {
+
         cb(null, UPLOAD_DIR);
+
     },
 
     filename(req, file, cb) {
@@ -43,110 +104,79 @@ const upload = multer({
     storage,
 
     limits: {
-        fileSize: 100 * 1024 * 1024 // 100 MB
+
+        fileSize: 100 * 1024 * 1024
+
     }
 
 });
 
-// -----------------------------
-// Safe File Path
-// -----------------------------
-function getSafeFilePath(fileName) {
-
-    const safeName = path.basename(fileName);
-
-    const fullPath = path.join(UPLOAD_DIR, safeName);
-
-    if (!fullPath.startsWith(UPLOAD_DIR)) {
-        return null;
-    }
-
-    return fullPath;
-
-}
-
-// -----------------------------
-// File List
-// -----------------------------
-function getFiles() {
-
-    if (!fs.existsSync(UPLOAD_DIR)) {
-        return [];
-    }
-
-    const files = fs.readdirSync(UPLOAD_DIR);
-
-    return files
-        .map(file => {
-
-            const filePath = path.join(UPLOAD_DIR, file);
-            const stat = fs.statSync(filePath);
-
-            return {
-
-                name: file,
-                size: stat.size,
-                createdAt: stat.birthtime,
-                modifiedAt: stat.mtime
-
-            };
-
-        })
-        .sort((a, b) => b.modifiedAt - a.modifiedAt);
-
-}
-
 // ------------------------------------
-// GET /upload
+// Root
 // ------------------------------------
 router.get("/", (req, res) => {
+
     res.json({
+
         success: true,
         message: "Falguni Upload Portal API Running",
+
         endpoints: {
+
             upload: "POST /upload",
             files: "GET /upload/files",
             download: "GET /upload/download/:fileName",
-            downloadZip: "POST /upload/download-zip"
+            downloadZip: "POST /upload/download-zip",
+            delete: "DELETE /upload/:fileName"
+
         }
+
     });
+
 });
 
 // ------------------------------------
-// POST /upload
+// Upload
 // ------------------------------------
 router.post(
-    "/",
-    (req, res, next) => {
 
-        // IMPORTANT:
-        // Old auto clean removed.
-        // Multiple customers can now upload
-        // without deleting previous files.
+    "/",
+
+    (req, res, next) => {
 
         upload.array("files", 100)(req, res, function (err) {
 
             if (err instanceof multer.MulterError) {
 
                 if (err.code === "LIMIT_FILE_SIZE") {
+
                     return res.status(400).json({
+
                         success: false,
-                        message: "One or more files exceed the maximum size (100 MB)."
+                        message: "One or more files exceed 100 MB."
+
                     });
+
                 }
 
                 return res.status(400).json({
+
                     success: false,
                     message: err.message
+
                 });
 
             }
 
             if (err) {
+
                 return res.status(500).json({
+
                     success: false,
                     message: err.message
+
                 });
+
             }
 
             next();
@@ -154,46 +184,85 @@ router.post(
         });
 
     },
+
     (req, res) => {
 
         try {
 
             if (!req.files || req.files.length === 0) {
+
                 return res.status(400).json({
+
                     success: false,
                     message: "No files uploaded."
+
                 });
+
             }
 
-            const uploadedFiles = req.files.map(file => ({
-                displayName: file.originalname,
-                storedName: file.filename,
-                size: file.size,
-                mimetype: file.mimetype,
-                uploadedAt: new Date()
-            }));
+            let metadata = loadMetadata();
+
+            const uploadedFiles = [];
+
+            for (const file of req.files) {
+
+                const item = {
+
+                    id:
+                        Date.now().toString() +
+                        Math.floor(Math.random() * 100000),
+
+                    displayName: file.originalname,
+
+                    storedName: file.filename,
+
+                    size: file.size,
+
+                    mimetype: file.mimetype,
+
+                    uploadedAt: new Date().toISOString()
+
+                };
+
+                metadata.push(item);
+                uploadedFiles.push(item);
+
+            }
+
+            saveMetadata(metadata);
 
             return res.status(200).json({
+
                 success: true,
-                message: `${uploadedFiles.length} file(s) uploaded successfully.`,
+
+                message:
+                    uploadedFiles.length +
+                    " file(s) uploaded successfully.",
+
                 count: uploadedFiles.length,
+
                 files: uploadedFiles
+
             });
 
         } catch (err) {
 
-            console.error("Upload Error:", err);
+            console.error(err);
 
             return res.status(500).json({
+
                 success: false,
                 message: "Upload failed.",
                 error: err.message
+
             });
 
         }
 
     }
+
 );
+
 // ------------------------------------
 // GET /upload/files
 // ------------------------------------
@@ -201,49 +270,45 @@ router.get("/files", (req, res) => {
 
     try {
 
-        if (!fs.existsSync(UPLOAD_DIR)) {
+        let metadata = loadMetadata();
 
-            return res.json({
-                success: true,
-                count: 0,
-                files: []
-            });
+        // Remove records whose file no longer exists
+        metadata = metadata.filter(file => {
 
-        }
+            const filePath = getSafeFilePath(file.storedName);
 
-        const files = fs.readdirSync(UPLOAD_DIR);
+            return (
+                filePath &&
+                fs.existsSync(filePath) &&
+                fs.statSync(filePath).isFile()
+            );
 
-        const fileList = files
-            .map(file => {
+        });
 
-                const filePath = path.join(UPLOAD_DIR, file);
+        saveMetadata(metadata);
 
-                try {
+        const fileList = metadata
+            .sort(
+                (a, b) =>
+                    new Date(a.uploadedAt) -
+                    new Date(b.uploadedAt)
+            ) // FIFO
+            .map(file => ({
 
-                    const stat = fs.statSync(filePath);
+                id: file.id,
+                displayName: file.displayName,
+                storedName: file.storedName,
+                mimetype: file.mimetype,
+                size: file.size,
+                sizeKB: +(file.size / 1024).toFixed(2),
+                uploadedAt: file.uploadedAt,
+                downloadUrl:
+                    "/upload/download/" +
+                    encodeURIComponent(file.storedName)
 
-                    return {
-                        displayName: file,
-                        storedName: file,
-                        type: path.extname(file).toLowerCase(),
-                        size: stat.size,
-                        sizeKB: +(stat.size / 1024).toFixed(2),
-                        createdAt: stat.birthtime,
-                        modifiedAt: stat.mtime,
-                        downloadUrl:
-                            "/upload/download/" +
-                            encodeURIComponent(file)
-                    };
+            }));
 
-                } catch (err) {
-                    return null;
-                }
-
-            })
-            .filter(Boolean)
-            .sort((a, b) => a.createdAt - b.createdAt); // FIFO
-
-        return res.status(200).json({
+        return res.json({
 
             success: true,
             count: fileList.length,
@@ -253,13 +318,12 @@ router.get("/files", (req, res) => {
 
     } catch (err) {
 
-        console.error("Get Files Error:", err);
+        console.error(err);
 
         return res.status(500).json({
 
             success: false,
-            message: "Unable to fetch uploaded files.",
-            error: err.message
+            message: err.message
 
         });
 
@@ -274,34 +338,100 @@ router.get("/download/:fileName", (req, res) => {
 
     try {
 
-        const requestedFile = decodeURIComponent(req.params.fileName || "");
+        const fileName = decodeURIComponent(req.params.fileName);
 
-        const filePath = getSafeFilePath(requestedFile);
+        const filePath = getSafeFilePath(fileName);
 
-        if (!filePath) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid file name."
-            });
-        }
+        if (!filePath || !fs.existsSync(filePath)) {
 
-        if (!fs.existsSync(filePath)) {
             return res.status(404).json({
+
                 success: false,
                 message: "File not found."
+
             });
+
         }
 
-        return res.download(filePath);
+        const metadata = loadMetadata();
+
+        const fileInfo = metadata.find(
+            x => x.storedName === fileName
+        );
+
+        return res.download(
+
+            filePath,
+
+            fileInfo
+                ? fileInfo.displayName
+                : path.basename(filePath)
+
+        );
 
     } catch (err) {
 
-        console.error("Download Route Error:", err);
+        console.error(err);
 
         return res.status(500).json({
+
             success: false,
-            message: "Internal Server Error.",
-            error: err.message
+            message: err.message
+
+        });
+
+    }
+
+});
+
+// ------------------------------------
+// DELETE /upload/:fileName
+// ------------------------------------
+router.delete("/:fileName", (req, res) => {
+
+    try {
+
+        const fileName = decodeURIComponent(req.params.fileName);
+
+        const filePath = getSafeFilePath(fileName);
+
+        if (!filePath || !fs.existsSync(filePath)) {
+
+            return res.status(404).json({
+
+                success: false,
+                message: "File not found."
+
+            });
+
+        }
+
+        fs.unlinkSync(filePath);
+
+        let metadata = loadMetadata();
+
+        metadata = metadata.filter(
+            x => x.storedName !== fileName
+        );
+
+        saveMetadata(metadata);
+
+        return res.json({
+
+            success: true,
+            message: "File deleted successfully."
+
+        });
+
+    } catch (err) {
+
+        console.error(err);
+
+        return res.status(500).json({
+
+            success: false,
+            message: err.message
+
         });
 
     }
@@ -318,41 +448,63 @@ router.post("/download-zip", async (req, res) => {
         const files = req.body.files;
 
         if (!Array.isArray(files) || files.length === 0) {
+
             return res.status(400).json({
+
                 success: false,
                 message: "No files selected."
+
             });
+
         }
 
-        res.setHeader("Content-Type", "application/zip");
+        const metadata = loadMetadata();
+
+        res.setHeader(
+            "Content-Type",
+            "application/zip"
+        );
+
         res.setHeader(
             "Content-Disposition",
             `attachment; filename="Falguni_Files_${Date.now()}.zip"`
         );
 
         const archive = archiver("zip", {
+
             zlib: { level: 9 }
+
         });
 
         archive.on("error", err => {
-            console.error(err);
-            res.status(500).end();
+
+            throw err;
+
         });
 
         archive.pipe(res);
 
-        for (const fileName of files) {
+        for (const storedName of files) {
 
-            const safePath = getSafeFilePath(fileName);
+            const filePath = getSafeFilePath(storedName);
 
             if (
-                safePath &&
-                fs.existsSync(safePath) &&
-                fs.statSync(safePath).isFile()
+                filePath &&
+                fs.existsSync(filePath)
             ) {
-                archive.file(safePath, {
-                    name: path.basename(safePath)
+
+                const fileInfo = metadata.find(
+                    x => x.storedName === storedName
+                );
+
+                archive.file(filePath, {
+
+                    name: fileInfo
+                        ? fileInfo.displayName
+                        : storedName
+
                 });
+
             }
 
         }
@@ -364,10 +516,14 @@ router.post("/download-zip", async (req, res) => {
         console.error(err);
 
         if (!res.headersSent) {
+
             res.status(500).json({
+
                 success: false,
                 message: err.message
+
             });
+
         }
 
     }
@@ -380,8 +536,10 @@ router.post("/download-zip", async (req, res) => {
 router.use((req, res) => {
 
     res.status(404).json({
+
         success: false,
         message: "Route not found."
+
     });
 
 });

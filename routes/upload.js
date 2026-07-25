@@ -14,43 +14,25 @@ if (!fs.existsSync(UPLOAD_DIR)) {
 }
 
 // -----------------------------
-// Clean Upload Folder
-// -----------------------------
-function cleanUploadFolder() {
-    try {
-        if (!fs.existsSync(UPLOAD_DIR)) return;
-
-        const files = fs.readdirSync(UPLOAD_DIR);
-
-        for (const file of files) {
-            const filePath = path.join(UPLOAD_DIR, file);
-
-            try {
-                const stat = fs.statSync(filePath);
-
-                if (stat.isFile()) {
-                    fs.unlinkSync(filePath);
-                }
-            } catch (err) {
-                console.error("Delete Error:", err.message);
-            }
-        }
-    } catch (err) {
-        console.error("Clean Folder Error:", err.message);
-    }
-}
-
-// -----------------------------
 // Multer Storage
 // -----------------------------
 const storage = multer.diskStorage({
 
-destination(req, file, cb) {
-    cb(null, UPLOAD_DIR);
-},
+    destination(req, file, cb) {
+        cb(null, UPLOAD_DIR);
+    },
+
     filename(req, file, cb) {
 
-        cb(null, file.originalname);
+        const ext = path.extname(file.originalname);
+
+        const uniqueName =
+            Date.now() +
+            "-" +
+            Math.round(Math.random() * 1000000) +
+            ext;
+
+        cb(null, uniqueName);
 
     }
 
@@ -113,6 +95,7 @@ function getFiles() {
         .sort((a, b) => b.modifiedAt - a.modifiedAt);
 
 }
+
 // ------------------------------------
 // GET /upload
 // ------------------------------------
@@ -136,12 +119,10 @@ router.post(
     "/",
     (req, res, next) => {
 
-        // Auto clean before every upload request
-        try {
-            cleanUploadFolder();
-        } catch (err) {
-            console.error("Clean Error:", err.message);
-        }
+        // IMPORTANT:
+        // Old auto clean removed.
+        // Multiple customers can now upload
+        // without deleting previous files.
 
         upload.array("files", 100)(req, res, function (err) {
 
@@ -185,7 +166,8 @@ router.post(
             }
 
             const uploadedFiles = req.files.map(file => ({
-                name: file.originalname,
+                displayName: file.originalname,
+                storedName: file.filename,
                 size: file.size,
                 mimetype: file.mimetype,
                 uploadedAt: new Date()
@@ -214,7 +196,6 @@ router.post(
 );
 // ------------------------------------
 // GET /upload/files
-// Latest uploads first
 // ------------------------------------
 router.get("/files", (req, res) => {
 
@@ -241,35 +222,26 @@ router.get("/files", (req, res) => {
 
                     const stat = fs.statSync(filePath);
 
-return {
-    displayName: file,
-    storedName: file,
-    type: path.extname(file).toLowerCase(),
-    size: stat.size,
-    sizeKB: +(stat.size / 1024).toFixed(2),
-    createdAt: stat.birthtime,
-    modifiedAt: stat.mtime,
-    downloadUrl:
-        "/upload/download/" +
-        encodeURIComponent(file)
-};
+                    return {
+                        displayName: file,
+                        storedName: file,
+                        type: path.extname(file).toLowerCase(),
+                        size: stat.size,
+                        sizeKB: +(stat.size / 1024).toFixed(2),
+                        createdAt: stat.birthtime,
+                        modifiedAt: stat.mtime,
+                        downloadUrl:
+                            "/upload/download/" +
+                            encodeURIComponent(file)
+                    };
 
                 } catch (err) {
-
                     return null;
-
                 }
 
             })
             .filter(Boolean)
-            .sort((a, b) => {
-
-                return (
-                    new Date(b.modifiedAt).getTime() -
-                    new Date(a.modifiedAt).getTime()
-                );
-
-            });
+            .sort((a, b) => a.createdAt - b.createdAt); // FIFO
 
         return res.status(200).json({
 
@@ -294,9 +266,9 @@ return {
     }
 
 });
+
 // ------------------------------------
 // GET /upload/download/:fileName
-// Secure Single File Download
 // ------------------------------------
 router.get("/download/:fileName", (req, res) => {
 
@@ -304,7 +276,6 @@ router.get("/download/:fileName", (req, res) => {
 
         const requestedFile = decodeURIComponent(req.params.fileName || "");
 
-        // Prevent Path Traversal
         const filePath = getSafeFilePath(requestedFile);
 
         if (!filePath) {
@@ -321,35 +292,7 @@ router.get("/download/:fileName", (req, res) => {
             });
         }
 
-        const stat = fs.statSync(filePath);
-
-        if (!stat.isFile()) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid file."
-            });
-        }
-
-        return res.download(
-            filePath,
-            path.basename(filePath),
-            (err) => {
-
-                if (err) {
-
-                    console.error("Download Error:", err);
-
-                    if (!res.headersSent) {
-                        return res.status(500).json({
-                            success: false,
-                            message: "Unable to download file."
-                        });
-                    }
-
-                }
-
-            }
-        );
+        return res.download(filePath);
 
     } catch (err) {
 
@@ -364,6 +307,7 @@ router.get("/download/:fileName", (req, res) => {
     }
 
 });
+
 // ------------------------------------
 // POST /upload/download-zip
 // ------------------------------------
@@ -387,24 +331,12 @@ router.post("/download-zip", async (req, res) => {
         );
 
         const archive = archiver("zip", {
-            zlib: {
-                level: 9
-            }
+            zlib: { level: 9 }
         });
 
-        archive.on("error", (err) => {
-
-            console.error("ZIP Error:", err);
-
-            if (!res.headersSent) {
-                return res.status(500).json({
-                    success: false,
-                    message: "ZIP creation failed."
-                });
-            }
-
-            res.end();
-
+        archive.on("error", err => {
+            console.error(err);
+            res.status(500).end();
         });
 
         archive.pipe(res);
@@ -413,23 +345,15 @@ router.post("/download-zip", async (req, res) => {
 
             const safePath = getSafeFilePath(fileName);
 
-            if (!safePath) {
-                continue;
+            if (
+                safePath &&
+                fs.existsSync(safePath) &&
+                fs.statSync(safePath).isFile()
+            ) {
+                archive.file(safePath, {
+                    name: path.basename(safePath)
+                });
             }
-
-            if (!fs.existsSync(safePath)) {
-                continue;
-            }
-
-            const stat = fs.statSync(safePath);
-
-            if (!stat.isFile()) {
-                continue;
-            }
-
-            archive.file(safePath, {
-                name: path.basename(safePath)
-            });
 
         }
 
@@ -437,13 +361,12 @@ router.post("/download-zip", async (req, res) => {
 
     } catch (err) {
 
-        console.error("ZIP Route Error:", err);
+        console.error(err);
 
         if (!res.headersSent) {
-            return res.status(500).json({
+            res.status(500).json({
                 success: false,
-                message: "Internal Server Error.",
-                error: err.message
+                message: err.message
             });
         }
 
@@ -452,7 +375,7 @@ router.post("/download-zip", async (req, res) => {
 });
 
 // ------------------------------------
-// 404 Handler
+// 404
 // ------------------------------------
 router.use((req, res) => {
 
@@ -463,7 +386,4 @@ router.use((req, res) => {
 
 });
 
-// ------------------------------------
-// Export Router
-// ------------------------------------
 module.exports = router;

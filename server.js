@@ -8,7 +8,10 @@ const app = express();
 
 
 // Middleware
-app.use(cors());
+app.use(cors({ 
+  origin: ["https://www.falgunixerox.in", "https://falgunixerox.in"],
+  methods: ["GET", "POST", "DELETE"]
+}));
 
 app.use(express.json());
 

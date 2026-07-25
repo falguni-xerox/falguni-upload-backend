@@ -26,12 +26,12 @@ const allowedOrigins = [
 ];
 
 
-const corsOptions = {
+app.use(cors({
 
     origin: function (origin, callback) {
 
 
-        // Allow Postman / Server requests
+        // Allow Postman / direct API calls
         if (!origin) {
 
             return callback(null, true);
@@ -46,7 +46,7 @@ const corsOptions = {
         }
 
 
-        console.log("Blocked CORS:", origin);
+        console.log("CORS BLOCKED:", origin);
 
         return callback(null, false);
 
@@ -66,22 +66,16 @@ const corsOptions = {
 
     allowedHeaders: [
 
-        "Content-Type"
+        "Content-Type",
+        "Authorization"
 
     ],
 
 
     credentials: true
 
-};
 
-
-
-app.use(cors(corsOptions));
-
-
-// Preflight request
-app.options("*", cors(corsOptions));
+}));
 
 
 
@@ -95,7 +89,7 @@ app.use(express.json());
 
 app.use(express.urlencoded({
 
-    extended: true
+    extended:true
 
 }));
 
@@ -117,16 +111,30 @@ app.use(express.static(
 
 
 // ======================================
-// HOME
+// FRONTEND PAGES
 // ======================================
 
 
-app.get("/", (req, res) => {
+app.get("/", (req,res)=>{
 
 
     res.sendFile(
 
-        path.join(__dirname, "../Frontend/index.html")
+        path.join(__dirname,"../Frontend/index.html")
+
+    );
+
+
+});
+
+
+
+app.get("/admin",(req,res)=>{
+
+
+    res.sendFile(
+
+        path.join(__dirname,"../Frontend/admin.html")
 
     );
 
@@ -137,27 +145,7 @@ app.get("/", (req, res) => {
 
 
 // ======================================
-// ADMIN PAGE
-// ======================================
-
-
-app.get("/admin", (req, res) => {
-
-
-    res.sendFile(
-
-        path.join(__dirname, "../Frontend/admin.html")
-
-    );
-
-
-});
-
-
-
-
-// ======================================
-// UPLOAD ROUTES
+// API ROUTES
 // ======================================
 
 
@@ -167,49 +155,40 @@ app.use("/upload", uploadRoute);
 
 
 // ======================================
-// DIRECT FILE ROUTE SUPPORT
-// ======================================
-
-// /files support
-app.get("/files", (req, res) => {
-
-
-    res.redirect("/upload/files");
-
-
-});
-
-
-
-// /download support
-app.get("/download/:file", (req, res) => {
-
-
-    res.redirect(
-
-        `/upload/download/${req.params.file}`
-
-    );
-
-
-});
-
-
-
-
-// ======================================
 // HEALTH CHECK
 // ======================================
 
 
-app.get("/health", (req, res) => {
+app.get("/health",(req,res)=>{
 
 
     res.json({
 
-        success: true,
+        success:true,
 
-        message: "Backend Running"
+        message:"Backend Running"
+
+    });
+
+
+});
+
+
+
+
+// ======================================
+// 404 HANDLER
+// ======================================
+
+
+app.use((req,res)=>{
+
+
+    res.status(404).json({
+
+        success:false,
+
+        message:"Route Not Found"
 
     });
 
@@ -224,17 +203,17 @@ app.get("/health", (req, res) => {
 // ======================================
 
 
-app.use((err, req, res, next) => {
+app.use((err,req,res,next)=>{
 
 
-    console.error(err);
+    console.error("SERVER ERROR:",err);
 
 
     res.status(500).json({
 
         success:false,
 
-        message:"Server Error"
+        message:"Internal Server Error"
 
     });
 
@@ -252,7 +231,7 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 10000;
 
 
-app.listen(PORT, "0.0.0.0", () => {
+app.listen(PORT,"0.0.0.0",()=>{
 
 
     console.log("------------------------------------");

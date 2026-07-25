@@ -484,48 +484,37 @@ router.post(
 
 
 
-        res.json({
+res.json({
 
 
-            success:true,
+    success:true,
 
 
-            jobId:
-                req.jobId,
+    orderNumber:
+        req.jobId,
 
 
-            message:
-                `${uploadedFiles.length} file(s) uploaded successfully.`,
+    jobId:
+        req.jobId,
 
 
-            count:
-                uploadedFiles.length,
+    displayTime:
+        300,
 
 
-            files:
-                uploadedFiles
+    message:
+        `${uploadedFiles.length} file(s) uploaded successfully.`,
 
 
-        });
+    count:
+        uploadedFiles.length,
 
 
-
-    }
-    catch(err){
-
-
-        console.error(err);
+    files:
+        uploadedFiles
 
 
-        res.status(500)
-        .json({
-
-            success:false,
-
-            message:
-                "Upload failed."
-
-        });
+});
 
 
     }

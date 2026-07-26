@@ -1,6 +1,5 @@
 const multer = require("multer");
 
-
 const {
 
     upload,
@@ -9,7 +8,9 @@ const {
 
     loadMetadata,
 
-    saveMetadata
+    saveMetadata,
+
+    generateJobId
 
 } = require("../config/uploadConfig");
 
@@ -25,68 +26,62 @@ exports.uploadFiles = [
 
 
 
+// Generate Job ID before multer
+
 (req,res,next)=>{
 
 
-    upload.array(
-
-        "files",
-
-        100
-
-    )
-
-    (req,res,function(err){
+try{
 
 
-
-        if(err instanceof multer.MulterError){
-
-
-            return res.status(400).json({
+if(!req.jobId){
 
 
-                success:false,
-
-
-                message:err.message
-
-
-            });
-
-
-        }
+req.jobId =
+generateJobId();
 
 
 
+console.log(
+
+"REQUEST JOB ID:",
+
+req.jobId
+
+);
 
 
-        if(err){
-
-
-            return res.status(500).json({
-
-
-                success:false,
-
-
-                message:err.message
-
-
-            });
-
-
-        }
+}
 
 
 
+next();
 
 
-        next();
+}
+
+catch(err){
 
 
+console.error(
 
-    });
+"Job ID Error:",
+
+err
+
+);
+
+
+res.status(500).json({
+
+success:false,
+
+message:"Job ID generation failed."
+
+});
+
+
+}
 
 
 
@@ -97,6 +92,83 @@ exports.uploadFiles = [
 
 
 
+// Multer Upload
+
+(req,res,next)=>{
+
+
+upload.array(
+
+"files",
+
+100
+
+)
+
+(req,res,function(err){
+
+
+
+if(err instanceof multer.MulterError){
+
+
+return res.status(400).json({
+
+
+success:false,
+
+
+message:err.message
+
+
+});
+
+
+}
+
+
+
+
+
+
+if(err){
+
+
+return res.status(500).json({
+
+
+success:false,
+
+
+message:err.message
+
+
+});
+
+
+}
+
+
+
+
+
+next();
+
+
+
+});
+
+
+
+},
+
+
+
+
+
+
+// Save Metadata
+
 (req,res)=>{
 
 
@@ -104,265 +176,255 @@ try{
 
 
 
-    if(
 
-        !req.files ||
 
-        req.files.length===0
+if(
 
-    ){
+!req.files ||
 
+req.files.length===0
 
-        return res.status(400).json({
+){
 
 
-            success:false,
+return res.status(400).json({
 
 
-            message:
+success:false,
 
-            "No files uploaded."
 
+message:
 
-        });
+"No files uploaded."
 
 
-    }
+});
 
 
+}
 
 
 
 
-    let metadata =
 
-    loadMetadata(
 
-        META_FILE
+let metadata =
 
-    );
+loadMetadata(
 
+META_FILE
 
+);
 
 
 
 
-    const uploadedFiles=[];
 
 
+const uploadedFiles=[];
 
 
 
 
-    for(const file of req.files){
 
 
 
 
+for(const file of req.files){
 
-        const item={
 
 
 
-            id:
 
-            Date.now()
+const item={
 
-            +
 
-            Math.floor(
 
-                Math.random()*10000
 
-            ),
+id:
 
+Date.now()
 
++
 
+Math.floor(
 
+Math.random()*10000
 
+),
 
-            jobId:
 
-            req.jobId,
 
 
 
 
+jobId:
 
+req.jobId,
 
-            // ORIGINAL NAME
 
-            displayName:
 
-            file.originalname,
 
 
 
 
+displayName:
 
+file.originalname,
 
 
-            // SERVER STORED NAME
 
-            storedName:
 
-            file.filename,
 
 
 
+storedName:
 
+file.filename,
 
 
 
-            size:
 
-            file.size,
 
 
 
+size:
 
+file.size,
 
 
-            mimetype:
 
-            file.mimetype,
 
 
 
 
+mimetype:
 
+file.mimetype,
 
 
-            downloaded:false,
 
 
 
-            downloadCount:0,
 
 
+downloaded:false,
 
-            downloadedAt:null,
 
 
+downloadCount:0,
 
 
 
+downloadedAt:null,
 
 
-            uploadedAt:
 
-            new Date()
 
-            .toISOString()
 
 
 
-        };
+uploadedAt:
 
+new Date()
 
+.toISOString()
 
 
 
+};
 
 
-        metadata.push(item);
 
 
 
 
-        uploadedFiles.push(item);
+metadata.push(item);
 
 
 
-    }
+uploadedFiles.push(item);
 
 
 
 
+}
 
 
 
-    saveMetadata(
 
 
-        META_FILE,
 
 
-        metadata
 
+saveMetadata(
 
-    );
+META_FILE,
 
+metadata
 
+);
 
 
 
 
 
 
-    res.json({
 
 
+res.json({
 
 
-        success:true,
 
+success:true,
 
 
 
 
-        orderNumber:
+orderNumber:
 
-        req.jobId,
+req.jobId,
 
 
 
 
+jobId:
 
-        jobId:
+req.jobId,
 
-        req.jobId,
 
 
 
+displayTime:
 
+900,
 
-        displayTime:
 
-        900,
 
 
+message:
 
+`${uploadedFiles.length} file(s) uploaded successfully.`,
 
 
-        message:
 
-        `${uploadedFiles.length} file(s) uploaded successfully.`,
 
 
+count:
 
+uploadedFiles.length,
 
 
 
-        count:
 
-        uploadedFiles.length,
 
+files:
 
+uploadedFiles
 
 
 
-
-
-        files:
-
-        uploadedFiles
-
-
-
-
-    });
-
+});
 
 
 
@@ -373,32 +435,32 @@ catch(err){
 
 
 
-    console.error(
+console.error(
 
-        "Upload Error:",
+"Upload Error:",
 
-        err
+err
 
-    );
-
-
-
-
-    res.status(500).json({
+);
 
 
 
-        success:false,
+
+res.status(500).json({
 
 
 
-        message:
-
-        "Upload failed."
+success:false,
 
 
 
-    });
+message:
+
+"Upload failed."
+
+
+
+});
 
 
 

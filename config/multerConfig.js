@@ -2,16 +2,13 @@ const fs = require("fs");
 const path = require("path");
 const multer = require("multer");
 
-
 const {
     UPLOAD_ROOT
 } = require("./pathConfig");
 
-
 const {
     generateJobId
 } = require("./jobConfig");
-
 
 
 
@@ -22,42 +19,31 @@ const {
 const storage = multer.diskStorage({
 
 
-
 destination(req,file,cb){
 
 
 
 if(!req.jobId){
 
-
-    req.jobId =
-
-        generateJobId();
+req.jobId =
+generateJobId();
 
 
-
-    console.log(
-
-        "NEW JOB ID:",
-
-        req.jobId
-
-    );
-
+console.log(
+"NEW JOB ID:",
+req.jobId
+);
 
 }
 
 
 
-
-
 const orderFolder =
-
 path.join(
 
-    UPLOAD_ROOT,
+UPLOAD_ROOT,
 
-    req.jobId
+req.jobId
 
 );
 
@@ -69,42 +55,31 @@ if(
 !fs.existsSync(orderFolder)
 ){
 
+fs.mkdirSync(
 
-    fs.mkdirSync(
+orderFolder,
 
-        orderFolder,
+{
+recursive:true
+}
 
-        {
-            recursive:true
-        }
-
-    );
-
+);
 
 }
 
 
 
 
-
 console.log(
-
-    "UPLOAD FOLDER:",
-
-    orderFolder
-
+"UPLOAD FOLDER:",
+orderFolder
 );
 
 
 
-
-
 cb(
-
-    null,
-
-    orderFolder
-
+null,
+orderFolder
 );
 
 
@@ -115,55 +90,36 @@ cb(
 
 
 
-
 filename(req,file,cb){
 
 
 
 const ext =
-
 path.extname(
-
-    file.originalname
-
+file.originalname
 );
-
-
 
 
 
 const uniqueName =
 
-
-
 Date.now()
-
 +
-
 "-"
-
 +
-
 Math.floor(
-
 Math.random()*1000000
-
 )
-
 +
-
 ext;
-
-
-
 
 
 
 cb(
 
-    null,
+null,
 
-    uniqueName
+uniqueName
 
 );
 
@@ -172,7 +128,6 @@ cb(
 }
 
 
-
 });
 
 
@@ -180,35 +135,21 @@ cb(
 
 
 
-
-
-// ------------------------------------
-// Upload Middleware
-// ------------------------------------
-
 const upload = multer({
-
-
 
 storage,
 
 
-
 limits:{
-
 
 fileSize:
 
 100 * 1024 * 1024
 
-
 }
 
 
-
 });
-
-
 
 
 
@@ -216,8 +157,6 @@ fileSize:
 
 module.exports = {
 
-
-    upload
-
+upload
 
 };

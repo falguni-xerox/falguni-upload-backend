@@ -100,46 +100,60 @@ function generateJobId() {
 const storage =
     multer.diskStorage({
 
-        destination(
-            req,
-            file,
-            cb
-        ) {
+        destination(req,file,cb){
 
-            if (!req.jobId) {
 
-                req.jobId =
-                    generateJobId();
+    if(!req.jobId){
 
-            }
 
-            const orderFolder =
-                path.join(
-                    UPLOAD_ROOT,
-                    req.jobId
-                );
+        req.jobId =
+            generateJobId();
 
-            if (
-                !fs.existsSync(
-                    orderFolder
-                )
-            ) {
 
-                fs.mkdirSync(
-                    orderFolder,
-                    {
-                        recursive: true
-                    }
-                );
+        console.log(
+            "NEW JOB ID:",
+            req.jobId
+        );
 
-            }
 
-            cb(
-                null,
-                orderFolder
-            );
+    }
 
-        },
+
+
+    const orderFolder =
+        path.join(
+            UPLOAD_ROOT,
+            req.jobId
+        );
+
+
+
+    fs.mkdirSync(
+
+        orderFolder,
+
+        {
+            recursive:true
+        }
+
+    );
+
+
+
+    console.log(
+        "UPLOAD FOLDER:",
+        orderFolder
+    );
+
+
+
+    cb(
+        null,
+        orderFolder
+    );
+
+
+},
 
         filename(
             req,

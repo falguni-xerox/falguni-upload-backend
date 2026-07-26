@@ -18,6 +18,7 @@ const {
     createZip
 } = require("../utils/zipHelper");
 
+
 // ------------------------------------
 // Home API
 // ------------------------------------
@@ -26,12 +27,12 @@ exports.home = (req, res) => {
 
     res.json({
 
-        success: true,
+        success:true,
 
         message:
             "Falguni Upload Portal V2 API Running",
 
-        endpoints: {
+        endpoints:{
 
             upload:
                 "POST /upload",
@@ -54,162 +55,229 @@ exports.home = (req, res) => {
 
 };
 
+
 // ------------------------------------
 // Upload Files
 // ------------------------------------
 
 exports.uploadFiles = [
 
-    (req, res, next) => {
+(req,res,next)=>{
 
-        upload.array(
-            "files",
-            100
-        )(req, res, function (err) {
 
-            if (err instanceof multer.MulterError) {
+    upload.array(
+        "files",
+        100
+    )(req,res,function(err){
 
-                return res.status(400).json({
 
-                    success: false,
+        if(err instanceof multer.MulterError){
 
-                    message:
-                        err.message
+            return res.status(400)
+            .json({
 
-                });
+                success:false,
 
-            }
+                message:
+                    err.message
 
-            if (err) {
+            });
 
-                return res.status(500).json({
+        }
 
-                    success: false,
 
-                    message:
-                        err.message
+        if(err){
 
-                });
+            return res.status(500)
+            .json({
 
-            }
+                success:false,
 
-            next();
+                message:
+                    err.message
+
+            });
+
+        }
+
+
+        next();
+
+
+    });
+
+
+},
+
+
+(req,res)=>{
+
+
+try{
+
+
+    if(
+        !req.files ||
+        req.files.length===0
+    ){
+
+        return res.status(400)
+        .json({
+
+            success:false,
+
+            message:
+                "No files uploaded."
 
         });
 
-    },
+    }
 
-    (req, res) => {
 
-        try {
 
-            if (
-                !req.files ||
-                req.files.length === 0
-            ) {
+    let metadata =
+        loadMetadata(
+            META_FILE
+        );
 
-                return res.status(400).json({
 
-                    success: false,
 
-                    message:
-                        "No files uploaded."
+    const uploadedFiles=[];
 
-                });
 
-            }
 
-            let metadata =
-                loadMetadata(
-                    META_FILE
-                );
+    for(const file of req.files){
 
-            const uploadedFiles = [];
 
-            for (const file of req.files) {
+        const item={
 
-                const item = {
 
-                    id:
-                        Date.now() +
-                        Math.floor(
-                            Math.random() * 10000
-                        ),
+            id:
+                Date.now()
+                +
+                Math.floor(
+                    Math.random()*10000
+                ),
 
-                    jobId:
-                        req.jobId,
 
-                    displayName:
-                        file.originalname,
+            jobId:
+                req.jobId,
 
-                    storedName:
-                        file.filename,
 
-                    size:
-                        file.size,
+            displayName:
+                file.originalname,
 
-                    mimetype:
-                        file.mimetype,
 
-                    uploadedAt:
-                        new Date()
-                            .toISOString()
+            storedName:
+                file.filename,
 
-                };
 
-                metadata.push(item);
+            size:
+                file.size,
 
-                uploadedFiles.push(item);
 
-            }
+            mimetype:
+                file.mimetype,
 
-            saveMetadata(
-                META_FILE,
-                metadata
-            );
 
-            res.json({
+            // NEW
 
-                success: true,
+            downloaded:false,
 
-                orderNumber:
-                    req.jobId,
 
-                jobId:
-                    req.jobId,
+            downloadCount:0,
 
-                displayTime:
-                    900,
 
-                message:
-                    `${uploadedFiles.length} file(s) uploaded successfully.`,
+            downloadedAt:null,
 
-                count:
-                    uploadedFiles.length,
 
-                files:
-                    uploadedFiles
+            uploadedAt:
+                new Date()
+                .toISOString()
 
-            });
 
-        }
+        };
 
-        catch (err) {
 
-            console.error(err);
 
-            res.status(500).json({
+        metadata.push(item);
 
-                success: false,
 
-                message:
-                    "Upload failed."
+        uploadedFiles.push(item);
 
-            });
 
-        }
 
     }
+
+
+
+    saveMetadata(
+
+        META_FILE,
+
+        metadata
+
+    );
+
+
+
+    res.json({
+
+
+        success:true,
+
+
+        orderNumber:
+            req.jobId,
+
+
+        jobId:
+            req.jobId,
+
+
+        displayTime:
+            900,
+
+
+        message:
+            `${uploadedFiles.length} file(s) uploaded successfully.`,
+
+
+        count:
+            uploadedFiles.length,
+
+
+        files:
+            uploadedFiles
+
+
+    });
+
+
+
+}
+
+catch(err){
+
+
+    console.error(err);
+
+
+    res.status(500)
+    .json({
+
+        success:false,
+
+        message:
+            "Upload failed."
+
+    });
+
+
+}
+
+
+}
 
 ];
 // ------------------------------------
@@ -219,424 +287,703 @@ exports.uploadFiles = [
 
 exports.getFiles = (req, res) => {
 
-    try {
+try {
 
-        let metadata =
-            loadMetadata(
-                META_FILE
-            );
 
-        // Remove Missing Files
+    let metadata =
+        loadMetadata(
+            META_FILE
+        );
 
-        metadata =
-            metadata.filter(item => {
 
-                const filePath =
-                    getSafeFilePath(
-                        UPLOAD_ROOT,
-                        item.jobId,
-                        item.storedName
-                    );
+    // Remove Missing Files
 
-                return (
-                    filePath &&
-                    fs.existsSync(filePath)
+    metadata =
+        metadata.filter(item=>{
+
+
+            const filePath =
+                getSafeFilePath(
+
+                    UPLOAD_ROOT,
+
+                    item.jobId,
+
+                    item.storedName
+
                 );
 
-            });
 
-        saveMetadata(
-            META_FILE,
-            metadata
-        );
+            return (
 
-        const orders = {};
+                filePath &&
 
-        metadata.forEach(file => {
+                fs.existsSync(filePath)
 
-            if (!orders[file.jobId]) {
-
-                orders[file.jobId] = {
-
-                    jobId:
-                        file.jobId,
-
-                    uploadedAt:
-                        file.uploadedAt,
-
-                    files: []
-
-                };
-
-            }
-
-            orders[file.jobId]
-                .files
-                .push({
-
-                    id:
-                        file.id,
-
-                    displayName:
-                        file.displayName,
-
-                    storedName:
-                        file.storedName,
-
-                    mimetype:
-                        file.mimetype,
-
-                    size:
-                        file.size,
-
-                    sizeKB:
-                        +(
-                            file.size / 1024
-                        ).toFixed(2),
-
-                    downloadUrl:
-
-                        `/upload/download/${encodeURIComponent(file.jobId)}/${encodeURIComponent(file.storedName)}`
-
-                });
-
-        });
-
-        const orderList =
-            Object.values(
-                orders
             );
 
-        res.json({
-
-            success: true,
-
-            count:
-                orderList.length,
-
-            orders:
-                orderList
 
         });
 
-    }
 
-    catch (err) {
 
-        console.error(
-            "Files Error:",
-            err
+    saveMetadata(
+
+        META_FILE,
+
+        metadata
+
+    );
+
+
+
+    const orders = {};
+
+
+
+    metadata.forEach(file=>{
+
+
+        if(!orders[file.jobId]){
+
+
+            orders[file.jobId]={
+
+
+                jobId:
+                    file.jobId,
+
+
+                uploadedAt:
+                    file.uploadedAt,
+
+
+                files:[]
+
+
+            };
+
+
+        }
+
+
+
+        orders[file.jobId]
+        .files
+        .push({
+
+
+
+            id:
+                file.id,
+
+
+            displayName:
+                file.displayName,
+
+
+            storedName:
+                file.storedName,
+
+
+            mimetype:
+                file.mimetype,
+
+
+            size:
+                file.size,
+
+
+            sizeKB:
+                +(
+                    file.size / 1024
+                ).toFixed(2),
+
+
+
+            downloadUrl:
+
+                `/upload/download/${encodeURIComponent(file.jobId)}/${encodeURIComponent(file.storedName)}`,
+
+
+
+            // NEW STATUS
+
+            downloaded:
+
+                file.downloaded || false,
+
+
+            downloadCount:
+
+                file.downloadCount || 0,
+
+
+            downloadedAt:
+
+                file.downloadedAt || null
+
+
+
+        });
+
+
+
+    });
+
+
+
+    const orderList =
+        Object.values(
+            orders
         );
 
-        res.status(500)
-            .json({
 
-                success: false,
 
-                message:
-                    err.message
+    res.json({
 
-            });
 
-    }
+        success:true,
+
+
+        count:
+            orderList.length,
+
+
+        orders:
+            orderList
+
+
+
+    });
+
+
+
+}
+
+catch(err){
+
+
+    console.error(
+        "Files Error:",
+        err
+    );
+
+
+    res.status(500)
+    .json({
+
+        success:false,
+
+        message:
+            err.message
+
+    });
+
+
+}
+
+
 
 };
+
+
 
 // ------------------------------------
 // Download Single File
 // ------------------------------------
 
-exports.downloadFile = (req, res) => {
+exports.downloadFile = (req,res)=>{
 
-    try {
+try{
 
-        const jobId =
-            decodeURIComponent(
-                req.params.jobId
-            );
 
-        const fileName =
-            decodeURIComponent(
-                req.params.fileName
-            );
+    const jobId =
+        decodeURIComponent(
+            req.params.jobId
+        );
 
-        const filePath =
-            getSafeFilePath(
-                UPLOAD_ROOT,
-                jobId,
-                fileName
-            );
 
-        if (
-            !filePath ||
-            !fs.existsSync(
-                filePath
-            )
-        ) {
+    const fileName =
+        decodeURIComponent(
+            req.params.fileName
+        );
 
-            return res.status(404)
-                .json({
 
-                    success: false,
 
-                    message:
-                        "File not found."
+    const filePath =
+        getSafeFilePath(
 
-                });
+            UPLOAD_ROOT,
 
-        }
+            jobId,
 
-        const metadata =
-            loadMetadata(
-                META_FILE
-            );
-
-        const fileInfo =
-            metadata.find(
-
-                item =>
-
-                    item.jobId === jobId &&
-
-                    item.storedName === fileName
-
-            );
-
-        res.download(
-
-            filePath,
-
-            fileInfo
-                ?
-                fileInfo.displayName
-                :
-                fileName
+            fileName
 
         );
 
+
+
+    if(
+
+        !filePath ||
+
+        !fs.existsSync(filePath)
+
+    ){
+
+
+        return res.status(404)
+        .json({
+
+            success:false,
+
+            message:
+                "File not found."
+
+        });
+
+
     }
 
-    catch (err) {
 
-        console.error(err);
 
-        res.status(500)
-            .json({
+    let metadata =
+        loadMetadata(
+            META_FILE
+        );
 
-                success: false,
 
-                message:
-                    err.message
 
-            });
+    const fileInfo =
+        metadata.find(
+
+
+            item =>
+
+
+                item.jobId === jobId &&
+
+
+                item.storedName === fileName
+
+
+
+        );
+
+
+
+    // -----------------------------
+    // DOWNLOAD STATUS UPDATE
+    // -----------------------------
+
+
+    if(fileInfo){
+
+
+        fileInfo.downloaded =
+            true;
+
+
+
+        fileInfo.downloadCount =
+            (
+                fileInfo.downloadCount || 0
+            ) + 1;
+
+
+
+        fileInfo.downloadedAt =
+
+            new Date()
+            .toISOString();
+
+
+
+        saveMetadata(
+
+            META_FILE,
+
+            metadata
+
+        );
+
 
     }
+
+
+
+
+    res.download(
+
+
+        filePath,
+
+
+        fileInfo
+
+            ?
+
+            fileInfo.displayName
+
+            :
+
+            fileName
+
+
+
+    );
+
+
+
+}
+
+catch(err){
+
+
+    console.error(err);
+
+
+    res.status(500)
+    .json({
+
+        success:false,
+
+        message:
+            err.message
+
+    });
+
+
+}
+
 
 };
 // ------------------------------------
 // Download Complete Order ZIP
 // ------------------------------------
 
-exports.downloadZip = async (req, res) => {
+exports.downloadZip = async (req,res)=>{
 
-    try {
+try{
 
-        const jobId =
-            req.body.jobId;
 
-        if (!jobId) {
+    const jobId =
+        req.body.jobId;
 
-            return res.status(400)
-                .json({
 
-                    success: false,
 
-                    message:
-                        "Job ID required."
+    if(!jobId){
 
-                });
 
-        }
+        return res.status(400)
+        .json({
 
-        const metadata =
-            loadMetadata(
-                META_FILE
-            );
+            success:false,
 
-        const orderFiles =
-            metadata.filter(
+            message:
+                "Job ID required."
 
-                file =>
+        });
 
-                    file.jobId === jobId
-
-            );
-
-        if (
-            orderFiles.length === 0
-        ) {
-
-            return res.status(404)
-                .json({
-
-                    success: false,
-
-                    message:
-                        "Order not found."
-
-                });
-
-        }
-
-        await createZip(
-
-            res,
-
-            jobId,
-
-            orderFiles,
-
-            getSafeFilePath,
-
-            UPLOAD_ROOT
-
-        );
 
     }
 
-    catch (err) {
 
-        console.error(
-            "ZIP Error:",
-            err
+
+    let metadata =
+        loadMetadata(
+            META_FILE
         );
 
-        if (!res.headersSent) {
 
-            res.status(500)
-                .json({
 
-                    success: false,
+    const orderFiles =
+        metadata.filter(
 
-                    message:
-                        err.message
+            file =>
 
-                });
+                file.jobId === jobId
 
-        }
+        );
+
+
+
+    if(
+        orderFiles.length === 0
+    ){
+
+
+        return res.status(404)
+        .json({
+
+            success:false,
+
+            message:
+                "Order not found."
+
+        });
+
 
     }
+
+
+
+    // --------------------------------
+    // Mark ZIP Download Status
+    // --------------------------------
+
+
+    metadata =
+        metadata.map(file=>{
+
+
+            if(file.jobId === jobId){
+
+
+                file.downloaded =
+                    true;
+
+
+                file.downloadCount =
+
+                    (
+                        file.downloadCount || 0
+                    )
+                    +
+                    1;
+
+
+
+                file.downloadedAt =
+
+                    new Date()
+                    .toISOString();
+
+
+            }
+
+
+            return file;
+
+
+        });
+
+
+
+    saveMetadata(
+
+        META_FILE,
+
+        metadata
+
+    );
+
+
+
+    await createZip(
+
+
+        res,
+
+
+        jobId,
+
+
+        orderFiles,
+
+
+        getSafeFilePath,
+
+
+        UPLOAD_ROOT
+
+
+
+    );
+
+
+
+}
+
+catch(err){
+
+
+    console.error(
+
+        "ZIP Error:",
+
+        err
+
+    );
+
+
+    if(!res.headersSent){
+
+
+        res.status(500)
+        .json({
+
+            success:false,
+
+            message:
+                err.message
+
+        });
+
+
+    }
+
+
+}
+
 
 };
+
+
 
 // ------------------------------------
 // Delete Complete Order
 // ------------------------------------
 
-exports.deleteOrder = (req, res) => {
+exports.deleteOrder = (req,res)=>{
 
-    try {
 
-        const jobId =
-            decodeURIComponent(
-                req.params.jobId
-            );
+try{
 
-        const orderFolder =
-            path.join(
 
-                UPLOAD_ROOT,
+    const jobId =
+        decodeURIComponent(
 
-                path.basename(
-                    jobId
-                )
-
-            );
-
-        if (
-            fs.existsSync(
-                orderFolder
-            )
-        ) {
-
-            fs.rmSync(
-
-                orderFolder,
-
-                {
-                    recursive: true,
-                    force: true
-                }
-
-            );
-
-        }
-
-        let metadata =
-            loadMetadata(
-                META_FILE
-            );
-
-        metadata =
-            metadata.filter(
-
-                file =>
-
-                    file.jobId !== jobId
-
-            );
-
-        saveMetadata(
-
-            META_FILE,
-
-            metadata
+            req.params.jobId
 
         );
 
-        res.json({
 
-            success: true,
 
-            message:
-                "Order deleted successfully."
+    const orderFolder =
+        path.join(
 
-        });
+            UPLOAD_ROOT,
+
+            path.basename(
+                jobId
+            )
+
+        );
+
+
+
+    if(
+        fs.existsSync(
+            orderFolder
+        )
+    ){
+
+
+        fs.rmSync(
+
+            orderFolder,
+
+            {
+
+                recursive:true,
+
+                force:true
+
+            }
+
+        );
+
 
     }
 
-    catch (err) {
 
-        console.error(err);
 
-        res.status(500)
-            .json({
+    let metadata =
+        loadMetadata(
 
-                success: false,
+            META_FILE
 
-                message:
-                    err.message
+        );
 
-            });
 
-    }
+
+    metadata =
+        metadata.filter(
+
+            file =>
+
+                file.jobId !== jobId
+
+        );
+
+
+
+    saveMetadata(
+
+        META_FILE,
+
+        metadata
+
+    );
+
+
+
+    res.json({
+
+        success:true,
+
+        message:
+            "Order deleted successfully."
+
+    });
+
+
+
+}
+
+catch(err){
+
+
+    console.error(err);
+
+
+    res.status(500)
+    .json({
+
+        success:false,
+
+        message:
+            err.message
+
+    });
+
+
+}
+
+
 
 };
+
+
 
 // ------------------------------------
 // 404 Handler
 // ------------------------------------
 
-exports.notFound = (req, res) => {
+exports.notFound = (req,res)=>{
+
 
     res.status(404)
-        .json({
+    .json({
 
-            success: false,
+        success:false,
 
-            message:
-                "Route not found."
+        message:
+            "Route not found."
 
-        });
+    });
+
 
 };

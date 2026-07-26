@@ -499,7 +499,7 @@ res.json({
 
 
     displayTime:
-        300,
+        900,
 
 
     message:

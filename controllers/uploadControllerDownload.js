@@ -2,21 +2,29 @@ const fs = require("fs");
 const path = require("path");
 
 const {
-    UPLOAD_ROOT,
-    META_FILE,
-    loadMetadata,
-    saveMetadata
+
+UPLOAD_ROOT,
+META_FILE,
+loadMetadata,
+saveMetadata
+
 } = require("../config/uploadConfig");
 
 
 const {
-    getSafeFilePath
+
+getSafeFilePath
+
 } = require("../utils/fileHelper");
 
 
 const {
-    createZip
+
+createZip
+
 } = require("../utils/zipHelper");
+
+
 
 
 
@@ -26,16 +34,21 @@ const {
 
 exports.downloadFile = (req,res)=>{
 
+
 try{
 
 
 const jobId =
-decodeURIComponent(req.params.jobId);
+decodeURIComponent(
+req.params.jobId
+);
 
 
 
 const storedName =
-decodeURIComponent(req.params.fileName);
+decodeURIComponent(
+req.params.fileName
+);
 
 
 
@@ -43,10 +56,15 @@ decodeURIComponent(req.params.fileName);
 
 const filePath =
 getSafeFilePath(
-    UPLOAD_ROOT,
-    jobId,
-    storedName
+
+UPLOAD_ROOT,
+
+jobId,
+
+storedName
+
 );
+
 
 
 
@@ -56,6 +74,7 @@ if(
 !fs.existsSync(filePath)
 ){
 
+
 return res.status(404).json({
 
 success:false,
@@ -64,7 +83,9 @@ message:"File not found"
 
 });
 
+
 }
+
 
 
 
@@ -78,52 +99,15 @@ loadMetadata(META_FILE);
 
 
 
+
 const fileInfo =
-metadata.find(item=>
+metadata.find(item =>
 
 item.jobId === jobId &&
+
 item.storedName === storedName
 
 );
-
-
-
-
-
-
-// ===============================
-// Save Download Status
-// ===============================
-
-if(fileInfo){
-
-
-fileInfo.downloaded = true;
-
-
-fileInfo.downloadCount =
-(fileInfo.downloadCount || 0)+1;
-
-
-if(!fileInfo.downloadedAt){
-
-fileInfo.downloadedAt =
-new Date().toISOString();
-
-}
-
-
-
-saveMetadata(
-META_FILE,
-metadata
-);
-
-
-
-}
-
-
 
 
 
@@ -134,8 +118,10 @@ let originalName =
 storedName;
 
 
+
 let mimeType =
 "application/octet-stream";
+
 
 
 
@@ -144,34 +130,33 @@ let mimeType =
 if(fileInfo){
 
 
-if(fileInfo.displayName){
 
 originalName =
-fileInfo.displayName;
+fileInfo.displayName ||
+storedName;
 
-}
 
-
-if(fileInfo.mimetype){
 
 mimeType =
-fileInfo.mimetype;
+fileInfo.mimetype ||
+"application/octet-stream";
+
+
 
 }
 
 
-}
 
 
 
 
 
-
-// fallback extension detect
+// fallback MIME
 
 if(
-mimeType==="application/octet-stream"
+mimeType === "application/octet-stream"
 ){
+
 
 mimeType =
 require("mime-types")
@@ -187,11 +172,60 @@ require("mime-types")
 
 
 
-res.setHeader(
-"Content-Type",
-mimeType
+
+
+// ===============================
+// Save Permanent Download Status
+// ===============================
+
+
+if(fileInfo){
+
+
+fileInfo.downloaded = true;
+
+
+
+fileInfo.downloadCount =
+(fileInfo.downloadCount || 0) + 1;
+
+
+
+fileInfo.downloadedAt =
+new Date().toISOString();
+
+
+
+
+saveMetadata(
+
+META_FILE,
+
+metadata
+
 );
 
+
+}
+
+
+
+
+
+
+
+// ===============================
+// Force Original Download
+// ===============================
+
+
+res.setHeader(
+
+"Content-Type",
+
+mimeType
+
+);
 
 
 
@@ -199,23 +233,18 @@ res.setHeader(
 
 "Content-Disposition",
 
-`attachment; filename="${encodeURIComponent(originalName)}"`
+`attachment; filename="${originalName}"`
 
 );
 
 
 
-
 res.setHeader(
-"Content-Transfer-Encoding",
-"binary"
-);
 
-
-
-res.setHeader(
 "Cache-Control",
+
 "no-store"
+
 );
 
 
@@ -223,9 +252,11 @@ res.setHeader(
 
 
 
-res.sendFile(
+res.download(
 
 path.resolve(filePath),
+
+originalName,
 
 {
 
@@ -239,30 +270,42 @@ headers:{
 
 (err)=>{
 
+
 if(err){
 
 console.error(
-"Send File Error:",
+
+"Download Error:",
+
 err
-);
-
-}
-
-}
 
 );
 
 
+}
+
 
 }
+
+);
+
+
+
+}
+
+
 
 catch(err){
 
 
 console.error(
+
 "Download Error:",
+
 err
+
 );
+
 
 
 res.status(500).json({
@@ -291,8 +334,8 @@ message:err.message
 // Download ZIP
 // ======================================
 
-
 exports.downloadZip = async(req,res)=>{
+
 
 try{
 
@@ -302,7 +345,10 @@ req.body.jobId;
 
 
 
+
+
 if(!jobId){
+
 
 return res.status(400).json({
 
@@ -312,7 +358,9 @@ message:"Job ID required"
 
 });
 
+
 }
+
 
 
 
@@ -326,11 +374,12 @@ loadMetadata(META_FILE);
 
 
 const orderFiles =
-metadata.filter(file=>
+metadata.filter(file =>
 
 file.jobId === jobId
 
 );
+
 
 
 
@@ -355,6 +404,7 @@ message:"Order not found"
 
 
 
+
 metadata =
 metadata.map(file=>{
 
@@ -362,7 +412,8 @@ metadata.map(file=>{
 if(file.jobId===jobId){
 
 
-file.downloaded=true;
+file.downloaded = true;
+
 
 
 file.downloadCount =
@@ -374,6 +425,7 @@ file.downloadedAt =
 new Date().toISOString();
 
 
+
 }
 
 
@@ -382,6 +434,7 @@ return file;
 
 
 });
+
 
 
 
@@ -416,16 +469,23 @@ UPLOAD_ROOT
 
 
 
+
+
 }
+
 
 
 catch(err){
 
 
 console.error(
+
 "ZIP Error:",
+
 err
+
 );
+
 
 
 
@@ -442,6 +502,7 @@ message:err.message
 
 
 }
+
 
 
 }

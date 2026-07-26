@@ -252,42 +252,37 @@ res.setHeader(
 
 
 
-res.download(
-
-path.resolve(filePath),
-
-originalName,
-
-{
-
-headers:{
-
-"Content-Type":mimeType
-
-}
-
-},
-
-(err)=>{
-
-
-if(err){
-
-console.error(
-
-"Download Error:",
-
-err
-
+const fileStream =
+fs.createReadStream(
+    path.resolve(filePath)
 );
 
 
-}
-
-
-}
-
+res.setHeader(
+    "Content-Type",
+    mimeType
 );
+
+
+res.setHeader(
+    "Content-Disposition",
+    `attachment; filename="${originalName}"`
+);
+
+
+res.setHeader(
+    "Content-Length",
+    fs.statSync(filePath).size
+);
+
+
+res.setHeader(
+    "Cache-Control",
+    "no-store"
+);
+
+
+fileStream.pipe(res);
 
 
 

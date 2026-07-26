@@ -5,7 +5,7 @@
 
 // Home + 404
 
-const homeController = require("./homeController");
+const homeController = require("./uploadControllerHome");
 
 
 // Upload

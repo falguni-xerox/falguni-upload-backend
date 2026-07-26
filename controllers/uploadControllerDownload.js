@@ -1,330 +1,256 @@
 const fs = require("fs");
 const path = require("path");
 
-
 const {
-
     UPLOAD_ROOT,
-
     META_FILE,
-
     loadMetadata,
-
     saveMetadata
-
 } = require("../config/uploadConfig");
 
 
-
 const {
-
     getSafeFilePath
-
 } = require("../utils/fileHelper");
 
 
-
 const {
-
     createZip
-
 } = require("../utils/zipHelper");
 
 
 
-
-// ------------------------------------
+// ======================================
 // Download Single File
-// ------------------------------------
+// ======================================
 
 exports.downloadFile = (req,res)=>{
-
 
 try{
 
 
-    const jobId =
+const jobId =
+decodeURIComponent(req.params.jobId);
 
-    decodeURIComponent(
 
-        req.params.jobId
 
-    );
+const storedName =
+decodeURIComponent(req.params.fileName);
 
 
 
 
-    const storedName =
 
-    decodeURIComponent(
+const filePath =
+getSafeFilePath(
+    UPLOAD_ROOT,
+    jobId,
+    storedName
+);
 
-        req.params.fileName
 
-    );
 
 
+if(
+!filePath ||
+!fs.existsSync(filePath)
+){
 
+return res.status(404).json({
 
+success:false,
 
+message:"File not found"
 
-    const filePath =
+});
 
-    getSafeFilePath(
+}
 
 
-        UPLOAD_ROOT,
 
 
-        jobId,
 
 
-        storedName
+let metadata =
+loadMetadata(META_FILE);
 
 
 
-    );
 
 
+const fileInfo =
+metadata.find(item=>
 
+item.jobId === jobId &&
+item.storedName === storedName
 
+);
 
 
 
-    if(
 
-        !filePath ||
 
-        !fs.existsSync(filePath)
 
-    ){
+// ===============================
+// Save Download Status
+// ===============================
 
+if(fileInfo){
 
-        return res.status(404).json({
 
+fileInfo.downloaded = true;
 
-            success:false,
 
+fileInfo.downloadCount =
+(fileInfo.downloadCount || 0)+1;
 
-            message:
 
-            "File not found."
+if(!fileInfo.downloadedAt){
 
+fileInfo.downloadedAt =
+new Date().toISOString();
 
-        });
+}
 
 
-    }
 
+saveMetadata(
+META_FILE,
+metadata
+);
 
 
 
+}
 
 
 
-    let metadata =
 
-    loadMetadata(
 
-        META_FILE
 
-    );
 
 
+let originalName =
+storedName;
 
 
+let mimeType =
+"application/octet-stream";
 
 
-    const fileInfo =
 
-    metadata.find(item=>
 
 
+if(fileInfo){
 
-        item.jobId === jobId &&
 
-        item.storedName === storedName
+if(fileInfo.displayName){
 
+originalName =
+fileInfo.displayName;
 
+}
 
-    );
 
+if(fileInfo.mimetype){
 
+mimeType =
+fileInfo.mimetype;
 
+}
 
 
+}
 
 
 
-    // -----------------------------
-    // Update Download Status
-    // -----------------------------
 
 
-    if(fileInfo){
 
+// fallback extension detect
 
+if(
+mimeType==="application/octet-stream"
+){
 
-        fileInfo.downloaded = true;
+mimeType =
+require("mime-types")
+.lookup(originalName)
+||
+"application/octet-stream";
 
 
+}
 
 
-        fileInfo.downloadCount =
 
-        (
 
-            fileInfo.downloadCount || 0
 
-        )
 
-        + 1;
+res.setHeader(
+"Content-Type",
+mimeType
+);
 
 
 
 
+res.setHeader(
 
-        fileInfo.downloadedAt =
+"Content-Disposition",
 
-        new Date()
+`attachment; filename="${encodeURIComponent(originalName)}"`
 
-        .toISOString();
+);
 
 
 
 
+res.setHeader(
+"Content-Transfer-Encoding",
+"binary"
+);
 
 
 
-        saveMetadata(
+res.setHeader(
+"Cache-Control",
+"no-store"
+);
 
 
-            META_FILE,
 
 
-            metadata
 
 
-        );
+res.sendFile(
 
+path.resolve(filePath),
 
+{
 
-    }
+headers:{
 
+"Content-Type":mimeType
 
+}
 
+},
 
+(err)=>{
 
+if(err){
 
+console.error(
+"Send File Error:",
+err
+);
 
+}
 
-    // Original filename
+}
 
-    const originalName =
-
-    fileInfo && fileInfo.displayName
-
-    ?
-
-    fileInfo.displayName
-
-    :
-
-    storedName;
-
-
-
-
-
-
-
-    // Correct MIME
-
-    const mimeType =
-
-    fileInfo && fileInfo.mimetype
-
-    ?
-
-    fileInfo.mimetype
-
-    :
-
-    "application/octet-stream";
-
-
-
-
-
-
-
-
-    res.setHeader(
-
-        "Content-Type",
-
-        mimeType
-
-    );
-
-
-
-
-
-
-
-    res.setHeader(
-
-        "Content-Disposition",
-
-        `attachment; filename*=UTF-8''${encodeURIComponent(originalName)}`
-
-    );
-
-
-
-
-
-
-
-    res.setHeader(
-
-        "Cache-Control",
-
-        "no-cache"
-
-    );
-
-
-
-
-
-
-
-    res.sendFile(
-
-        path.resolve(filePath),
-
-        err=>{
-
-
-            if(err){
-
-                console.error(
-
-                    "Send File Error:",
-
-                    err
-
-                );
-
-            }
-
-
-        }
-
-    );
-
-
+);
 
 
 
@@ -333,39 +259,22 @@ try{
 catch(err){
 
 
-
-    console.error(
-
-        "Download Error:",
-
-        err
-
-    );
+console.error(
+"Download Error:",
+err
+);
 
 
+res.status(500).json({
 
+success:false,
 
+message:err.message
 
-    res.status(500).json({
-
-
-
-        success:false,
-
-
-
-        message:
-
-        err.message
-
-
-
-    });
-
+});
 
 
 }
-
 
 
 };
@@ -378,258 +287,164 @@ catch(err){
 
 
 
-// ------------------------------------
-// Download Complete ZIP
-// ------------------------------------
+// ======================================
+// Download ZIP
+// ======================================
+
 
 exports.downloadZip = async(req,res)=>{
-
 
 try{
 
 
-    const jobId =
+const jobId =
+req.body.jobId;
 
-    req.body.jobId;
 
 
+if(!jobId){
 
+return res.status(400).json({
 
+success:false,
 
+message:"Job ID required"
 
-    if(!jobId){
+});
 
+}
 
-        return res.status(400).json({
 
 
-            success:false,
 
 
-            message:
+let metadata =
+loadMetadata(META_FILE);
 
-            "Job ID required."
 
 
-        });
 
 
-    }
+const orderFiles =
+metadata.filter(file=>
 
+file.jobId === jobId
 
+);
 
 
 
 
+if(orderFiles.length===0){
 
-    let metadata =
 
-    loadMetadata(
+return res.status(404).json({
 
-        META_FILE
+success:false,
 
-    );
+message:"Order not found"
 
+});
 
 
+}
 
 
 
 
-    const orderFiles =
 
-    metadata.filter(file=>
 
-        file.jobId === jobId
 
-    );
+metadata =
+metadata.map(file=>{
 
 
+if(file.jobId===jobId){
 
 
+file.downloaded=true;
 
 
+file.downloadCount =
+(file.downloadCount || 0)+1;
 
 
-    if(
 
-        orderFiles.length===0
+file.downloadedAt =
+new Date().toISOString();
 
-    ){
 
+}
 
-        return res.status(404).json({
 
 
-            success:false,
+return file;
 
 
-            message:
+});
 
-            "Order not found."
 
 
-        });
 
 
-    }
+saveMetadata(
 
+META_FILE,
 
+metadata
 
+);
 
 
 
 
 
 
-    // Mark ZIP Download
+await createZip(
 
+res,
 
-    metadata =
+jobId,
 
-    metadata.map(file=>{
+orderFiles,
 
+getSafeFilePath,
 
+UPLOAD_ROOT
 
-        if(
-
-            file.jobId === jobId
-
-        ){
-
-
-
-            file.downloaded = true;
-
-
-
-
-            file.downloadCount =
-
-            (
-
-                file.downloadCount || 0
-
-            )
-
-            + 1;
-
-
-
-
-
-            file.downloadedAt =
-
-            new Date()
-
-            .toISOString();
-
-
-
-
-        }
-
-
-
-
-        return file;
-
-
-
-    });
-
-
-
-
-
-
-
-    saveMetadata(
-
-
-        META_FILE,
-
-
-        metadata
-
-
-    );
-
-
-
-
-
-
-
-
-    await createZip(
-
-
-        res,
-
-
-        jobId,
-
-
-        orderFiles,
-
-
-        getSafeFilePath,
-
-
-        UPLOAD_ROOT
-
-
-
-    );
-
-
+);
 
 
 
 }
+
 
 catch(err){
 
 
-
-    console.error(
-
-        "ZIP Error:",
-
-        err
-
-    );
+console.error(
+"ZIP Error:",
+err
+);
 
 
 
+if(!res.headersSent){
 
 
+res.status(500).json({
 
-    if(!res.headersSent){
+success:false,
 
+message:err.message
 
-        res.status(500).json({
-
-
-            success:false,
-
-
-            message:
-
-            err.message
-
-
-
-        });
-
-
-    }
-
+});
 
 
 }
 
+
+}
 
 
 };

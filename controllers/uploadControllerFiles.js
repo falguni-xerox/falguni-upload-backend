@@ -1,14 +1,10 @@
 const fs = require("fs");
 
-
 const {
 
     UPLOAD_ROOT,
-
     META_FILE,
-
     loadMetadata,
-
     saveMetadata
 
 } = require("../config/uploadConfig");
@@ -34,192 +30,258 @@ exports.getFiles = (req,res)=>{
 try{
 
 
-    let metadata = loadMetadata(META_FILE);
+let metadata =
+loadMetadata(META_FILE);
 
 
 
-    metadata = metadata.filter(item=>{
 
 
-        const filePath = getSafeFilePath(
+// Remove missing files
 
-            UPLOAD_ROOT,
+metadata =
+metadata.filter(item=>{
 
-            item.jobId,
 
-            item.storedName
+const filePath =
+getSafeFilePath(
 
-        );
+    UPLOAD_ROOT,
 
+    item.jobId,
 
-        return (
+    item.storedName
 
-            filePath &&
+);
 
-            fs.existsSync(filePath)
 
-        );
 
+return (
 
-    });
+filePath &&
+fs.existsSync(filePath)
 
+);
 
 
+});
 
 
-    saveMetadata(
 
-        META_FILE,
 
-        metadata
 
-    );
 
+// Normalize download status
 
+metadata =
+metadata.map(file=>{
 
 
+return {
 
-    const orders = {};
+...file,
 
 
+downloaded:
+file.downloaded === true,
 
 
+downloadCount:
+file.downloadCount || 0,
 
-    metadata.forEach(file=>{
 
+downloadedAt:
+file.downloadedAt || null
 
-        if(!orders[file.jobId]){
 
+};
 
-            orders[file.jobId]={
 
-                jobId:file.jobId,
+});
 
-                uploadedAt:file.uploadedAt,
 
-                files:[]
 
-            };
 
 
-        }
 
+// Save cleaned metadata
 
+saveMetadata(
 
+META_FILE,
 
+metadata
 
-        orders[file.jobId].files.push({
+);
 
 
-            id:file.id,
 
 
-            displayName:file.displayName,
 
 
-            originalName:file.displayName,
 
+const orders = {};
 
-            storedName:file.storedName,
 
 
-            mimetype:file.mimetype,
 
 
-            size:file.size,
+metadata.forEach(file=>{
 
 
-            sizeKB:+(
 
-                file.size / 1024
+if(!orders[file.jobId]){
 
-            ).toFixed(2),
 
+orders[file.jobId]={
 
 
+jobId:file.jobId,
 
-            downloadUrl:
 
-            `/upload/download/${encodeURIComponent(file.jobId)}/${encodeURIComponent(file.storedName)}`,
+uploadedAt:
+file.uploadedAt,
 
 
+files:[]
 
 
-            downloaded:
+};
 
-            file.downloaded || false,
 
+}
 
 
-            downloadCount:
 
-            file.downloadCount || 0,
 
 
 
-            downloadedAt:
 
-            file.downloadedAt || null
+orders[file.jobId].files.push({
 
 
 
-        });
+id:file.id,
 
 
+displayName:
+file.displayName,
 
-    });
 
+originalName:
+file.displayName,
 
 
+storedName:
+file.storedName,
 
 
+mimetype:
+file.mimetype,
 
-    res.json({
 
+size:
+file.size,
 
-        success:true,
 
+sizeKB:+(
 
-        count:Object.keys(orders).length,
+file.size / 1024
 
+).toFixed(2),
 
-        orders:Object.values(orders)
 
 
 
-    });
+
+
+downloadUrl:
+
+`/upload/download/${encodeURIComponent(file.jobId)}/${encodeURIComponent(file.storedName)}`,
+
+
+
+
+
+// IMPORTANT
+
+downloaded:
+file.downloaded === true,
+
+
+
+
+downloadCount:
+file.downloadCount || 0,
+
+
+
+
+downloadedAt:
+file.downloadedAt || null
+
+
+
+});
+
+
+
+});
+
+
+
+
+
+
+
+res.json({
+
+
+success:true,
+
+
+count:Object.keys(orders).length,
+
+
+orders:Object.values(orders)
+
+
+
+});
 
 
 
 }
+
+
 
 catch(err){
 
 
-    console.error(
+console.error(
 
-        "Files Error:",
+"Files Error:",
 
-        err
+err
 
-    );
-
-
-
-    res.status(500).json({
-
-
-        success:false,
-
-
-        message:err.message
+);
 
 
 
-    });
+res.status(500).json({
+
+
+success:false,
+
+
+message:err.message
+
+
+});
 
 
 }
+
 
 
 };

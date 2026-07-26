@@ -45,10 +45,45 @@ function loadMetadata(metaFile) {
 // Save Metadata
 // ------------------------------------
 
-function saveMetadata(
-    metaFile,
-    data
-) {
+function saveMetadata(metaFile,data){
+
+try{
+
+
+fs.writeFileSync(
+
+metaFile,
+
+JSON.stringify(
+data,
+null,
+2
+),
+
+"utf8"
+
+);
+
+
+}
+
+catch(err){
+
+
+console.error(
+
+"Metadata Save Error:",
+
+err
+
+);
+
+
+}
+
+
+} 
+{
 
     try {
 

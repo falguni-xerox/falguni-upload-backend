@@ -36,6 +36,67 @@ try{
     );
 
 
+    // ------------------------------------
+// Delete All Orders
+// ------------------------------------
+
+exports.deleteAllOrders = (req, res) => {
+
+    try {
+
+        // Delete all upload folders
+        if (fs.existsSync(UPLOAD_ROOT)) {
+
+            const folders = fs.readdirSync(UPLOAD_ROOT);
+
+            for (const folder of folders) {
+
+                fs.rmSync(
+                    path.join(UPLOAD_ROOT, folder),
+                    {
+                        recursive: true,
+                        force: true
+                    }
+                );
+
+            }
+
+        }
+
+        // Clear metadata
+        saveMetadata(
+            META_FILE,
+            []
+        );
+
+        res.json({
+
+            success: true,
+
+            message: "All orders deleted successfully."
+
+        });
+
+    }
+    catch (err) {
+
+        console.error(
+            "Delete All Error:",
+            err
+        );
+
+        res.status(500).json({
+
+            success: false,
+
+            message: err.message
+
+        });
+
+    }
+
+};
+
 
 
 

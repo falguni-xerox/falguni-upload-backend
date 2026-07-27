@@ -89,6 +89,14 @@ router.delete(
     controller.deleteOrder
 );
 
+// ------------------------------------
+// Delete All Orders
+// ------------------------------------
+
+router.delete(
+    "/orders",
+    controller.deleteAllOrders
+);
 
 
 

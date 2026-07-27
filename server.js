@@ -28,33 +28,42 @@ const allowedOrigins = [
 
 app.use(cors({
 
-    origin: function (origin, callback) {
+    origin:function(origin,callback){
 
 
-        // Allow Postman / direct API calls
-        if (!origin) {
+        // Allow Postman / direct API
 
-            return callback(null, true);
+        if(!origin){
 
-        }
-
-
-        if (allowedOrigins.includes(origin)) {
-
-            return callback(null, true);
+            return callback(null,true);
 
         }
 
 
-        console.log("CORS BLOCKED:", origin);
 
-        return callback(null, false);
+        if(
+            allowedOrigins.includes(origin)
+        ){
+
+            return callback(null,true);
+
+        }
+
+
+
+        console.log(
+            "CORS BLOCKED:",
+            origin
+        );
+
+
+        return callback(null,false);
 
 
     },
 
 
-    methods: [
+    methods:[
 
         "GET",
         "POST",
@@ -64,7 +73,7 @@ app.use(cors({
     ],
 
 
-    allowedHeaders: [
+    allowedHeaders:[
 
         "Content-Type",
         "Authorization"
@@ -72,7 +81,16 @@ app.use(cors({
     ],
 
 
-    credentials: true
+    // IMPORTANT FOR DOWNLOAD FILENAME
+
+    exposedHeaders:[
+
+        "Content-Disposition"
+
+    ],
+
+
+    credentials:true
 
 
 }));
@@ -84,14 +102,18 @@ app.use(cors({
 // BODY PARSER
 // ======================================
 
+app.use(
+    express.json()
+);
 
-app.use(express.json());
 
-app.use(express.urlencoded({
+app.use(
+    express.urlencoded({
 
-    extended:true
+        extended:true
 
-}));
+    })
+);
 
 
 
@@ -100,12 +122,11 @@ app.use(express.urlencoded({
 // STATIC FRONTEND
 // ======================================
 
-
-app.use(express.static(
-
-    path.join(__dirname, "../Frontend")
-
-));
+app.use(
+    express.static(
+        path.join(__dirname,"../Frontend")
+    )
+);
 
 
 
@@ -114,16 +135,16 @@ app.use(express.static(
 // FRONTEND PAGES
 // ======================================
 
-
-app.get("/", (req,res)=>{
-
+app.get("/",(req,res)=>{
 
     res.sendFile(
 
-        path.join(__dirname,"../Frontend/index.html")
+        path.join(
+            __dirname,
+            "../Frontend/index.html"
+        )
 
     );
-
 
 });
 
@@ -131,13 +152,14 @@ app.get("/", (req,res)=>{
 
 app.get("/admin",(req,res)=>{
 
-
     res.sendFile(
 
-        path.join(__dirname,"../Frontend/admin.html")
+        path.join(
+            __dirname,
+            "../Frontend/admin.html"
+        )
 
     );
-
 
 });
 
@@ -148,8 +170,10 @@ app.get("/admin",(req,res)=>{
 // API ROUTES
 // ======================================
 
-
-app.use("/upload", uploadRoute);
+app.use(
+    "/upload",
+    uploadRoute
+);
 
 
 
@@ -157,7 +181,6 @@ app.use("/upload", uploadRoute);
 // ======================================
 // HEALTH CHECK
 // ======================================
-
 
 app.get("/health",(req,res)=>{
 
@@ -180,7 +203,6 @@ app.get("/health",(req,res)=>{
 // 404 HANDLER
 // ======================================
 
-
 app.use((req,res)=>{
 
 
@@ -202,11 +224,13 @@ app.use((req,res)=>{
 // ERROR HANDLER
 // ======================================
 
-
 app.use((err,req,res,next)=>{
 
 
-    console.error("SERVER ERROR:",err);
+    console.error(
+        "SERVER ERROR:",
+        err
+    );
 
 
     res.status(500).json({
@@ -227,18 +251,24 @@ app.use((err,req,res,next)=>{
 // START SERVER
 // ======================================
 
-
-const PORT = process.env.PORT || 10000;
-
-
-app.listen(PORT,"0.0.0.0",()=>{
+const PORT =
+process.env.PORT || 10000;
 
 
-    console.log("------------------------------------");
+app.listen(
+    PORT,
+    "0.0.0.0",
+    ()=>{
 
-    console.log(`Server Running : ${PORT}`);
 
-    console.log("------------------------------------");
+        console.log("------------------------------------");
+
+        console.log(
+            `Server Running : ${PORT}`
+        );
+
+        console.log("------------------------------------");
 
 
-});
+    }
+);

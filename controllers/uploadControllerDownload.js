@@ -2,28 +2,21 @@ const fs = require("fs");
 const path = require("path");
 
 const {
-
-UPLOAD_ROOT,
-META_FILE,
-loadMetadata,
-saveMetadata
-
+    UPLOAD_ROOT,
+    META_FILE,
+    loadMetadata,
+    saveMetadata
 } = require("../config/uploadConfig");
 
 
 const {
-
-getSafeFilePath
-
+    getSafeFilePath
 } = require("../utils/fileHelper");
 
 
 const {
-
-createZip
-
+    createZip
 } = require("../utils/zipHelper");
-
 
 
 
@@ -34,22 +27,20 @@ createZip
 
 exports.downloadFile = (req,res)=>{
 
-
 try{
 
 
 const jobId =
 decodeURIComponent(
-req.params.jobId
+    req.params.jobId
 );
 
 
 
 const storedName =
 decodeURIComponent(
-req.params.fileName
+    req.params.fileName
 );
-
 
 
 
@@ -57,11 +48,11 @@ req.params.fileName
 const filePath =
 getSafeFilePath(
 
-UPLOAD_ROOT,
+    UPLOAD_ROOT,
 
-jobId,
+    jobId,
 
-storedName
+    storedName
 
 );
 
@@ -70,23 +61,19 @@ storedName
 
 
 if(
-!filePath ||
-!fs.existsSync(filePath)
+    !filePath ||
+    !fs.existsSync(filePath)
 ){
-
 
 return res.status(404).json({
 
-success:false,
+    success:false,
 
-message:"File not found"
+    message:"File not found"
 
 });
 
-
 }
-
-
 
 
 
@@ -101,12 +88,28 @@ loadMetadata(META_FILE);
 
 
 const fileInfo =
-metadata.find(item =>
+metadata.find(item=>
 
-item.jobId === jobId &&
+    item.jobId === jobId &&
 
-item.storedName === storedName
+    item.storedName === storedName
 
+);
+
+
+
+
+
+console.log(
+"DOWNLOAD CHECK:",
+jobId,
+storedName
+);
+
+
+console.log(
+"FOUND FILE:",
+fileInfo
 );
 
 
@@ -116,7 +119,6 @@ item.storedName === storedName
 
 let originalName =
 storedName;
-
 
 
 let mimeType =
@@ -130,7 +132,6 @@ let mimeType =
 if(fileInfo){
 
 
-
 originalName =
 fileInfo.displayName ||
 storedName;
@@ -142,21 +143,15 @@ fileInfo.mimetype ||
 "application/octet-stream";
 
 
-
 }
 
 
 
 
 
-
-
-// fallback MIME
-
 if(
 mimeType === "application/octet-stream"
 ){
-
 
 mimeType =
 require("mime-types")
@@ -164,7 +159,6 @@ require("mime-types")
 ||
 "application/octet-stream";
 
-
 }
 
 
@@ -173,11 +167,9 @@ require("mime-types")
 
 
 
-
 // ===============================
-// Save Permanent Download Status
+// Save Download Status
 // ===============================
-
 
 if(fileInfo){
 
@@ -199,11 +191,12 @@ new Date().toISOString();
 
 saveMetadata(
 
-META_FILE,
+    META_FILE,
 
-metadata
+    metadata
 
 );
+
 
 
 }
@@ -213,10 +206,14 @@ metadata
 
 
 
+// ===============================
+// Original File Download
+// ===============================
 
-// ===============================
-// Force Original Download
-// ===============================
+
+const stat =
+fs.statSync(filePath);
+
 
 
 res.setHeader(
@@ -233,7 +230,17 @@ res.setHeader(
 
 "Content-Disposition",
 
-`attachment; filename="${originalName}"`
+`attachment; filename*=UTF-8''${encodeURIComponent(originalName)}`
+
+);
+
+
+
+res.setHeader(
+
+"Content-Length",
+
+stat.size
 
 );
 
@@ -252,37 +259,15 @@ res.setHeader(
 
 
 
-const fileStream =
+const stream =
 fs.createReadStream(
     path.resolve(filePath)
 );
 
 
-res.setHeader(
-    "Content-Type",
-    mimeType
-);
 
+stream.pipe(res);
 
-res.setHeader(
-    "Content-Disposition",
-    `attachment; filename="${originalName}"`
-);
-
-
-res.setHeader(
-    "Content-Length",
-    fs.statSync(filePath).size
-);
-
-
-res.setHeader(
-    "Cache-Control",
-    "no-store"
-);
-
-
-fileStream.pipe(res);
 
 
 
@@ -314,7 +299,6 @@ message:err.message
 
 }
 
-
 };
 
 
@@ -341,9 +325,7 @@ req.body.jobId;
 
 
 
-
 if(!jobId){
-
 
 return res.status(400).json({
 
@@ -353,9 +335,7 @@ message:"Job ID required"
 
 });
 
-
 }
-
 
 
 
@@ -368,12 +348,14 @@ loadMetadata(META_FILE);
 
 
 
+
 const orderFiles =
-metadata.filter(file =>
+metadata.filter(file=>
 
 file.jobId === jobId
 
 );
+
 
 
 
@@ -392,7 +374,6 @@ message:"Order not found"
 
 
 }
-
 
 
 
@@ -428,7 +409,9 @@ new Date().toISOString();
 return file;
 
 
+
 });
+
 
 
 
@@ -442,6 +425,7 @@ META_FILE,
 metadata
 
 );
+
 
 
 
@@ -464,13 +448,12 @@ UPLOAD_ROOT
 
 
 
-
-
 }
 
 
 
 catch(err){
+
 
 
 console.error(
@@ -501,6 +484,7 @@ message:err.message
 
 
 }
+
 
 
 };

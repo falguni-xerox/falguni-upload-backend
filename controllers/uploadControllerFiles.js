@@ -19,6 +19,65 @@ const {
 
 
 
+// ------------------------------------
+// DEBUG METADATA
+// GET /upload/debug-metadata
+// ------------------------------------
+
+exports.debugMetadata = (req,res)=>{
+
+try{
+
+
+const metadata =
+loadMetadata(META_FILE);
+
+
+
+res.json({
+
+success:true,
+
+count:metadata.length,
+
+metadata:metadata
+
+
+});
+
+
+}
+
+catch(err){
+
+
+console.error(
+"Debug Metadata Error:",
+err
+);
+
+
+
+res.status(500).json({
+
+success:false,
+
+message:err.message
+
+
+});
+
+
+}
+
+
+};
+
+
+
+
+
+
 
 // ------------------------------------
 // GET /upload/files
@@ -26,13 +85,11 @@ const {
 
 exports.getFiles = (req,res)=>{
 
-
 try{
 
 
 let metadata =
 loadMetadata(META_FILE);
-
 
 
 
@@ -46,11 +103,11 @@ metadata.filter(item=>{
 const filePath =
 getSafeFilePath(
 
-    UPLOAD_ROOT,
+UPLOAD_ROOT,
 
-    item.jobId,
+item.jobId,
 
-    item.storedName
+item.storedName
 
 );
 
@@ -59,6 +116,7 @@ getSafeFilePath(
 return (
 
 filePath &&
+
 fs.existsSync(filePath)
 
 );
@@ -79,19 +137,24 @@ metadata.map(file=>{
 
 return {
 
+
 ...file,
 
 
 downloaded:
+
 file.downloaded === true,
 
 
 downloadCount:
+
 file.downloadCount || 0,
 
 
 downloadedAt:
+
 file.downloadedAt || null
+
 
 
 };
@@ -104,7 +167,6 @@ file.downloadedAt || null
 
 
 
-// Save cleaned metadata
 
 saveMetadata(
 
@@ -130,16 +192,21 @@ metadata.forEach(file=>{
 
 
 
+
+
 if(!orders[file.jobId]){
 
 
 orders[file.jobId]={
 
 
-jobId:file.jobId,
+jobId:
+
+file.jobId,
 
 
 uploadedAt:
+
 file.uploadedAt,
 
 
@@ -157,31 +224,46 @@ files:[]
 
 
 
+
 orders[file.jobId].files.push({
 
 
 
-id:file.id,
+
+id:
+
+file.id,
+
 
 
 displayName:
+
 file.displayName,
+
 
 
 originalName:
+
 file.displayName,
 
 
+
 storedName:
+
 file.storedName,
 
 
+
 mimetype:
+
 file.mimetype,
 
 
+
 size:
+
 file.size,
+
 
 
 sizeKB:+(
@@ -197,32 +279,44 @@ file.size / 1024
 
 downloadUrl:
 
+
 `/upload/download/${encodeURIComponent(file.jobId)}/${encodeURIComponent(file.storedName)}`,
 
 
 
 
 
-// IMPORTANT
+
 
 downloaded:
+
 file.downloaded === true,
 
 
 
 
+
+
 downloadCount:
+
 file.downloadCount || 0,
 
 
 
 
+
+
 downloadedAt:
+
 file.downloadedAt || null
 
 
 
+
+
 });
+
+
 
 
 
@@ -237,13 +331,20 @@ file.downloadedAt || null
 res.json({
 
 
+
 success:true,
 
 
-count:Object.keys(orders).length,
+
+count:
+
+Object.keys(orders).length,
 
 
-orders:Object.values(orders)
+
+orders:
+
+Object.values(orders)
 
 
 
@@ -251,11 +352,12 @@ orders:Object.values(orders)
 
 
 
+
 }
 
 
-
 catch(err){
+
 
 
 console.error(
@@ -265,6 +367,7 @@ console.error(
 err
 
 );
+
 
 
 
@@ -278,6 +381,7 @@ message:err.message
 
 
 });
+
 
 
 }

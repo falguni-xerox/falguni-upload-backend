@@ -1,7 +1,12 @@
 const express = require("express");
+
 const router = express.Router();
 
+
 const controller = require("../controllers/uploadController");
+
+
+
 
 // ------------------------------------
 // Home
@@ -12,6 +17,9 @@ router.get(
     controller.home
 );
 
+
+
+
 // ------------------------------------
 // Upload Files
 // ------------------------------------
@@ -20,6 +28,21 @@ router.post(
     "/",
     controller.uploadFiles
 );
+
+
+
+
+// ------------------------------------
+// Debug Metadata
+// ------------------------------------
+
+router.get(
+    "/debug-metadata",
+    controller.debugMetadata
+);
+
+
+
 
 // ------------------------------------
 // Order Wise Files
@@ -30,6 +53,9 @@ router.get(
     controller.getFiles
 );
 
+
+
+
 // ------------------------------------
 // Download Single File
 // ------------------------------------
@@ -38,6 +64,9 @@ router.get(
     "/download/:jobId/:fileName",
     controller.downloadFile
 );
+
+
+
 
 // ------------------------------------
 // Download Complete Order ZIP
@@ -48,6 +77,9 @@ router.post(
     controller.downloadZip
 );
 
+
+
+
 // ------------------------------------
 // Delete Complete Order
 // ------------------------------------
@@ -57,6 +89,9 @@ router.delete(
     controller.deleteOrder
 );
 
+
+
+
 // ------------------------------------
 // 404
 // ------------------------------------
@@ -64,6 +99,9 @@ router.delete(
 router.use(
     controller.notFound
 );
+
+
+
 
 // ------------------------------------
 // Export

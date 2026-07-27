@@ -30,6 +30,7 @@ const uploadControllerDelete = require("./uploadControllerDelete");
 
 
 
+
 // ------------------------------------
 // Export All Controllers
 // ------------------------------------
@@ -37,11 +38,13 @@ const uploadControllerDelete = require("./uploadControllerDelete");
 module.exports = {
 
 
+
 // Home API
 
 home:
 
 homeController.home,
+
 
 
 
@@ -53,11 +56,21 @@ uploadControllerUpload.uploadFiles,
 
 
 
+
 // Files
 
 getFiles:
 
 uploadControllerFiles.getFiles,
+
+
+
+// Debug Metadata
+
+debugMetadata:
+
+uploadControllerFiles.debugMetadata,
+
 
 
 
@@ -69,11 +82,13 @@ uploadControllerDownload.downloadFile,
 
 
 
+
 // ZIP
 
 downloadZip:
 
 uploadControllerDownload.downloadZip,
+
 
 
 
@@ -85,11 +100,13 @@ uploadControllerDelete.deleteOrder,
 
 
 
+
 // 404
 
 notFound:
 
 homeController.notFound
+
 
 
 };

@@ -1,96 +1,59 @@
 const fs = require("fs");
 const path = require("path");
 
-
 const {
-
     UPLOAD_ROOT,
-
     META_FILE,
-
     loadMetadata,
-
     saveMetadata
-
 } = require("../config/uploadConfig");
-
-
 
 
 // ------------------------------------
 // Delete Complete Order
 // ------------------------------------
 
-exports.deleteOrder = (req,res)=>{
-
-
-try{
-
-
-    const jobId =
-
-    decodeURIComponent(
-
-        req.params.jobId
-
-    );
-
-
-    // ------------------------------------
-// Delete All Orders
-// ------------------------------------
-
-exports.deleteAllOrders = (req, res) => {
+exports.deleteOrder = (req, res) => {
 
     try {
 
-        // Delete all upload folders
-        if (fs.existsSync(UPLOAD_ROOT)) {
+        const jobId = decodeURIComponent(req.params.jobId);
 
-            const folders = fs.readdirSync(UPLOAD_ROOT);
+        // Upload folder path
+        const orderFolder = path.join(
+            UPLOAD_ROOT,
+            path.basename(jobId)
+        );
 
-            for (const folder of folders) {
+        // Delete physical folder
+        if (fs.existsSync(orderFolder)) {
 
-                fs.rmSync(
-                    path.join(UPLOAD_ROOT, folder),
-                    {
-                        recursive: true,
-                        force: true
-                    }
-                );
-
-            }
+            fs.rmSync(orderFolder, {
+                recursive: true,
+                force: true
+            });
 
         }
 
-        // Clear metadata
-        saveMetadata(
-            META_FILE,
-            []
-        );
+        // Remove metadata
+        let metadata = loadMetadata(META_FILE);
+
+        metadata = metadata.filter(file => file.jobId !== jobId);
+
+        saveMetadata(META_FILE, metadata);
 
         res.json({
-
             success: true,
-
-            message: "All orders deleted successfully."
-
+            message: "Order deleted successfully."
         });
 
-    }
-    catch (err) {
+    } catch (err) {
 
-        console.error(
-            "Delete All Error:",
-            err
-        );
+        console.error("Delete Error:", err);
 
         res.status(500).json({
-
             success: false,
-
             message: err.message
-
         });
 
     }
@@ -98,176 +61,49 @@ exports.deleteAllOrders = (req, res) => {
 };
 
 
+// ------------------------------------
+// Delete All Orders
+// ------------------------------------
 
+exports.deleteAllOrders = (req, res) => {
 
+    try {
 
+        // Delete upload folders
+        if (fs.existsSync(UPLOAD_ROOT)) {
 
-    // Upload folder path
+            const folders = fs.readdirSync(UPLOAD_ROOT);
 
-    const orderFolder =
+            folders.forEach(folder => {
 
-    path.join(
+                const folderPath = path.join(UPLOAD_ROOT, folder);
 
-        UPLOAD_ROOT,
+                fs.rmSync(folderPath, {
+                    recursive: true,
+                    force: true
+                });
 
-        path.basename(jobId)
+            });
 
-    );
+        }
 
+        // Clear metadata
+        saveMetadata(META_FILE, []);
 
+        res.json({
+            success: true,
+            message: "All orders deleted successfully."
+        });
 
+    } catch (err) {
 
+        console.error("Delete All Error:", err);
 
-
-
-
-    // Remove physical files
-
-    if(
-
-        fs.existsSync(orderFolder)
-
-    ){
-
-
-        fs.rmSync(
-
-            orderFolder,
-
-            {
-
-                recursive:true,
-
-                force:true
-
-            }
-
-        );
-
+        res.status(500).json({
+            success: false,
+            message: err.message
+        });
 
     }
-
-
-
-
-
-
-
-
-
-    // Remove metadata
-
-    let metadata =
-
-    loadMetadata(
-
-        META_FILE
-
-    );
-
-
-
-
-
-
-
-
-    metadata =
-
-    metadata.filter(file=>
-
-
-
-        file.jobId !== jobId
-
-
-
-    );
-
-
-
-
-
-
-
-
-    saveMetadata(
-
-
-        META_FILE,
-
-
-        metadata
-
-
-    );
-
-
-
-
-
-
-
-
-    res.json({
-
-
-
-        success:true,
-
-
-
-        message:
-
-        "Order deleted successfully."
-
-
-
-    });
-
-
-
-
-
-}
-
-catch(err){
-
-
-
-    console.error(
-
-        "Delete Error:",
-
-        err
-
-    );
-
-
-
-
-
-
-    res.status(500).json({
-
-
-
-        success:false,
-
-
-
-        message:
-
-        err.message
-
-
-
-    });
-
-
-
-}
-
-
 
 };

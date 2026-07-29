@@ -2,33 +2,20 @@
 // Main Controller Export
 // ------------------------------------
 
-
 // Home + 404
-
 const homeController = require("./uploadControllerHome");
 
-
 // Upload
-
 const uploadControllerUpload = require("./uploadControllerUpload");
 
-
 // Files List
-
 const uploadControllerFiles = require("./uploadControllerFiles");
 
-
 // Download + ZIP
-
 const uploadControllerDownload = require("./uploadControllerDownload");
 
-
 // Delete
-
 const uploadControllerDelete = require("./uploadControllerDelete");
-
-
-
 
 
 // ------------------------------------
@@ -37,76 +24,31 @@ const uploadControllerDelete = require("./uploadControllerDelete");
 
 module.exports = {
 
+    // Home API
+    home: homeController.home,
 
+    // Upload
+    uploadFiles: uploadControllerUpload.uploadFiles,
 
-// Home API
+    // Files
+    getFiles: uploadControllerFiles.getFiles,
 
-home:
+    // Debug Metadata
+    debugMetadata: uploadControllerFiles.debugMetadata,
 
-homeController.home,
+    // Download
+    downloadFile: uploadControllerDownload.downloadFile,
 
+    // ZIP
+    downloadZip: uploadControllerDownload.downloadZip,
 
+    // Delete Single Order
+    deleteOrder: uploadControllerDelete.deleteOrder,
 
+    // Delete All Orders
+    deleteAllOrders: uploadControllerDelete.deleteAllOrders,
 
-// Upload
-
-uploadFiles:
-
-uploadControllerUpload.uploadFiles,
-
-
-
-
-// Files
-
-getFiles:
-
-uploadControllerFiles.getFiles,
-
-
-
-// Debug Metadata
-
-debugMetadata:
-
-uploadControllerFiles.debugMetadata,
-
-
-
-
-// Download
-
-downloadFile:
-
-uploadControllerDownload.downloadFile,
-
-
-
-
-// ZIP
-
-downloadZip:
-
-uploadControllerDownload.downloadZip,
-
-
-
-
-// Delete
-
-deleteOrder:
-
-uploadControllerDelete.deleteOrder,
-
-
-
-
-// 404
-
-notFound:
-
-homeController.notFound
-
-
+    // 404
+    notFound: homeController.notFound
 
 };

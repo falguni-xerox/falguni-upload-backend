@@ -16,6 +16,7 @@ const allowedOrigins = [
     "https://falgunixerox.in",
 
     "https://www.falgunixerox.in",
+    "https://upload.falgunixerox.in",
 
     "https://falguni-upload-frontend.vercel.app",
 

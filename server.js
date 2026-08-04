@@ -1,3 +1,4 @@
+const shopConfig = require("./config/shopConfig");
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
@@ -274,3 +275,7 @@ app.listen(
 
     }
 );
+// Shop Info API
+app.get("/api/shop-info", (req, res) => {
+  res.json(shopConfig);
+});
